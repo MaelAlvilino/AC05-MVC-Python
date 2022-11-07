@@ -1,22 +1,20 @@
 
-from flask_restful import Api
+
 from config.app_config import creat_app
 from flask_jwt_extended import JWTManager
-from flask_sqlalchemy import SQLAlchemy
-from models.users import User
+from model.user import User
+from db.database import Database
+from flask import request
+from model.user import User
 
 
 
 app = creat_app()
 
-api = Api(app)
+app.config['database'] = Database(create_all=True)
+
 
 jwt = JWTManager(app)
-db = SQLAlchemy(app)
-
-@app.before_first_request
-def criaBanco():
-    db.create_all()
 
 
 @app.route('/', methods=['GET'])
@@ -25,10 +23,25 @@ def teste():
 
 # Rotas
 @app.route('/users', methods=['GET','POST'])
-def get_users():
-    users = User.find_by_users()
-    if not users: return []
-    return users.json()
+def user_view():
+    print(request.get_json())
+    if request.method == 'POST':
+        print('entrei aqui')
+        user = User(
+            email= request.get_json()['email'],
+            password= request.get_json()['password']
+        )
+        
+        dbsession = app.config['database'].session_scoped()
+        dbsession.add(user)
+        dbsession.commit()
+        app.config['database'].session_scoped.remove()
+        return 'Tudo certo', 201
+
+    if request.method == 'GET':
+        users = User.find_by_users()
+        if not users: return []
+        return users.json()
 
 if __name__ == "__main__":
-    app.run('0.0.0.0', port=4000)
+    app.run('0.0.0.0', port=4000, debug=True) 
